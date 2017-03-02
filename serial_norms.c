@@ -8,6 +8,59 @@ float frob_norm(float *matrix, int m, int n);
 float one_norm(float *matrix, int m, int n);
 float inf_norm(float *matrix, int m, int n);
 
+
+
+// #threads
+int block_size = 32;	
+
+//================================================================ 
+// One global function for each norm, which will
+// be called by curly brackets within a function, say,
+// 'calculate_norm_on_gpu'
+
+
+__global__ void add_arrays_gpu(float *matrix, int m, int n){
+	// idx is a unique ID for each thread
+	//      ( block index * threads ) + thread index
+	int idx = blockIdx.x*blockDim.x + threadIdx.x;
+	int k;
+	int max = 0;
+	if(idx<m) // For each row
+		for(k=0; k<n; k++){
+			if( fabsf(matrix_d[idx*m + k]) > max ){
+				max = fabsf(matrix_d[idx*m + k]);	
+			}
+		}
+	// Store local max somewhere
+	
+}
+
+//================================================================
+
+double max_norm_gpu(int m, int n ){
+	// On device
+	float *matrix_d
+	cudaMalloc ((void **) &matrix_d, sizeof(float)*m*n);
+	// Copy data from host memory to device
+	cudaMemcpy(matrix_d, matrix, sizeof(float)*n*m, cudaMemcpyHostToDevice);	
+
+	// Configuring the grid
+	dim3 dimBlock(block_size);	// One argument = 1D
+	// N/32 blocks, or one extra with an uneven amount
+	dim3 dimGrid ( (N/dimBlock.x) + (!(N%dimBlock.x)?0:1) );
+
+	// Matrix for local results
+	float max[m];
+
+	// Error Checks
+
+	// Call global function
+	compute_maxnorm_gpu<<dimGrid,dimBlock>>(matrix_d,m,n);
+	// Run through max[m]
+	cudaMemcpy(max[idx],max,sizeof(float),cudaMemcpyDeviceToHost);
+
+	// return norm
+}
 int main(int argc, char **argv ){
 	
 	int c,m,n,i,j;
@@ -49,12 +102,20 @@ int main(int argc, char **argv ){
 	
 	printf("m = %d, n = %d\n",m,n);
 
+	//====================================================
+ 	// Allocate memory 
+	// On host
 	float *matrix;
 	matrix = malloc(n*m*sizeof(float));		
-
+	//====================================================
+	
+	// Initialise matrix
 	for(i=0;i<n*m;i++){
 		matrix[i] = drand48();
 	}
+
+
+
 	float norm;
 	// Testing time
 	/*
