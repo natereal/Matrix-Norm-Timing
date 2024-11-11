@@ -9,7 +9,6 @@ float one_norm(float *matrix, int m, int n);
 float inf_norm(float *matrix, int m, int n);
 
 
-
 // #threads
 int block_size = 32;	
 
